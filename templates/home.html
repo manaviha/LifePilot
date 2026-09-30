@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>LifePilot</title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            margin: 0;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        h1 {
+            color: #172033;
+            font-size: 42px;
+        }
+
+        .subtitle {
+            color: #667085;
+            font-size: 18px;
+            margin-bottom: 30px;
+        }
+
+        .goal-form {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 40px;
+        }
+
+        input {
+            width: 70%;
+            padding: 18px;
+            border: 1px solid #ccd3df;
+            border-radius: 12px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 18px 25px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 12px;
+            background: #172033;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.85;
+        }
+
+        .goal-card {
+            background: white;
+            padding: 25px;
+            border-radius: 18px;
+            margin-bottom: 20px;
+        }
+
+        .goal-card h2 {
+            color: #172033;
+        }
+
+        .status {
+            color: #667085;
+        }
+
+        .task-list {
+            margin-top: 20px;
+        }
+
+        .task {
+            padding: 12px;
+            margin: 8px 0;
+            background: #f4f7fb;
+            border-radius: 10px;
+        }
+
+        .empty {
+            color: #667085;
+        }
+
+        .agent-activity {
+            background: white;
+            padding: 25px;
+            border-radius: 18px;
+            margin-top: 40px;
+        }
+
+        .agent-activity h2 {
+            color: #172033;
+        }
+
+        .activity-item {
+            padding: 15px;
+            margin: 10px 0;
+            background: #f4f7fb;
+            border-radius: 10px;
+        }
+
+        .activity-type {
+            font-weight: bold;
+            color: #172033;
+        }
+
+        .activity-reason {
+            color: #667085;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+
+    <!-- HEADER -->
+
+    <h1>🎯 Turn Goals Into Actions.</h1>
+
+    <p class="subtitle">
+        LifePilot plans, executes, verifies and dynamically replans your everyday goals.
+    </p>
+
+
+    <!-- CREATE GOAL -->
+
+    <div class="goal-form">
+
+        <form method="POST">
+
+            {% csrf_token %}
+
+            <input
+                type="text"
+                name="goal"
+                placeholder="What do you want to accomplish?"
+                required
+            >
+
+            <button type="submit">
+                Create Goal
+            </button>
+
+        </form>
+
+    </div>
+
+
+    <!-- ACTIVE GOALS -->
+
+    <h2>Active Goals</h2>
+
+
+    {% for goal in goals %}
+
+        <div class="goal-card">
+
+            <h2>
+                🎯 {{ goal.title }}
+            </h2>
+
+            <p class="status">
+                Status: {{ goal.status }}
+            </p>
+
+
+            <h3>
+                Tasks
+            </h3>
+
+
+            <div class="task-list">
+
+
+                {% for task in goal.tasks.all %}
+
+                    <div class="task">
+
+                        <strong>
+                            {{ task.title }}
+                        </strong>
+
+                        —
+                        {{ task.status }}
+
+
+                        {% if task.status != "completed" %}
+
+
+                            <!-- COMPLETE BUTTON -->
+
+                            <form
+                                method="POST"
+                                action="/complete-task/{{ task.id }}/"
+                                style="display:inline;"
+                            >
+
+                                {% csrf_token %}
+
+                                <button type="submit">
+                                    Complete
+                                </button>
+
+                            </form>
+
+
+                            <!-- BLOCK / REPLAN BUTTON -->
+
+                            <form
+                                method="POST"
+                                action="/block-task/{{ task.id }}/"
+                                style="display:inline;"
+                            >
+
+                                {% csrf_token %}
+
+                                <button type="submit">
+                                    Block / Replan
+                                </button>
+
+                            </form>
+
+
+                        {% endif %}
+
+
+                    </div>
+
+
+                {% empty %}
+
+                    <p class="empty">
+                        No tasks yet.
+                    </p>
+
+                {% endfor %}
+
+
+            </div>
+
+        </div>
+
+
+    {% empty %}
+
+        <p class="empty">
+            No active goals yet. Create your first goal above.
+        </p>
+
+    {% endfor %}
+
+
+
+    <!-- AGENT ACTIVITY -->
+
+    <div class="agent-activity">
+
+        <h2>
+            🤖 Agent Activity
+        </h2>
+
+
+        {% for action in agent_actions %}
+
+            <div class="activity-item">
+
+                <div class="activity-type">
+
+                    {{ action.action_type|upper }}
+
+                    —
+                    {{ action.action }}
+
+                </div>
+
+
+                <div class="activity-reason">
+
+                    {{ action.reason }}
+
+                </div>
+
+
+            </div>
+
+
+        {% empty %}
+
+            <p class="empty">
+                No agent activity yet.
+            </p>
+
+        {% endfor %}
+
+
+    </div>
+
+
+</div>
+
+
+</body>
+
+</html>
