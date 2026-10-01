@@ -105,65 +105,75 @@ def complete_task(request, task_id):
 
 
 def block_task(request, task_id):
+    try:
+        task = Task.objects.get(id=task_id)
 
-    task = Task.objects.get(id=task_id)
+        # Mark task as blocked
+        task.status = "blocked"
+        task.save()
 
-    # Mark task as blocked
-    task.status = "blocked"
-    task.save()
+        goal = task.goal
 
-    goal = task.goal
+        # Get other unfinished tasks
+        remaining_tasks = Task.objects.filter(
+            goal=goal
+        ).exclude(
+            status="completed"
+        ).exclude(
+            id=task.id
+        )
 
+        # Convert remaining tasks into text
+        remaining_text = "\n".join(
+            f"- {t.title} ({t.status})"
+            for t in remaining_tasks
+        )
 
-    # Get other unfinished tasks
-    remaining_tasks = Task.objects.filter(
-        goal=goal
-    ).exclude(
-        status="completed"
-    ).exclude(
-        id=task.id
-    )
+        # Ask Gemini to replan
+        new_tasks_text = replan_tasks(
+            goal.title,
+            task.title,
+            remaining_text
+        )
 
+        # Convert Gemini response into individual tasks
+        new_task_list = new_tasks_text.strip().split("\n")
 
-    # Convert remaining tasks into text
-    remaining_text = "\n".join(
-        f"- {t.title} ({t.status})"
-        for t in remaining_tasks
-    )
+        for task_title in new_task_list:
+            task_title = task_title.strip()
 
+            if task_title:
+                Task.objects.create(
+                    goal=goal,
+                    title=task_title
+                )
 
-    # Ask Gemini to replan
-    new_tasks_text = replan_tasks(
-        goal.title,
-        task.title,
-        remaining_text
-    )
+        # Log successful replanning
+        AgentAction.objects.create(
+            goal=goal,
+            task=task,
+            action_type="replan",
+            action="Generated replacement tasks",
+            reason=f"Task blocked: {task.title}",
+            success=True
+        )
 
+        return redirect("home")
 
-    # Convert Gemini response into individual tasks
-    new_task_list = new_tasks_text.strip().split("\n")
+    except Exception as e:
+        print("LIFEPILOT REPLAN ERROR:", repr(e))
 
-
-    for task_title in new_task_list:
-
-        task_title = task_title.strip()
-
-        if task_title:
-            Task.objects.create(
-                goal=goal,
-                title=task_title
+        # Log failed replanning
+        try:
+            AgentAction.objects.create(
+                goal=task.goal if "task" in locals() else None,
+                task=task if "task" in locals() else None,
+                action_type="replan",
+                action="Replanning failed",
+                reason=str(e),
+                success=False
             )
+        except Exception:
+            pass
 
-
-    # Log replanning action
-    AgentAction.objects.create(
-        goal=goal,
-        task=task,
-        action_type="replan",
-        action="Generated replacement tasks",
-        reason=f"Task blocked: {task.title}",
-        success=True
-    )
-
-
-    return redirect("home")
+        return redirect("home")
