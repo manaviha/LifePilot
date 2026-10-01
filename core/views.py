@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect
+from django.contrib.auth.models import User
 
 from tasks.models import Goal, Task
 from agent.models import AgentAction
@@ -14,8 +15,14 @@ def home(request):
 
         if goal_text:
 
+            # Get or create a demo user
+            user, created = User.objects.get_or_create(
+                username="lifepilot_demo"
+            )
+
+            # Create the goal
             goal = Goal.objects.create(
-                user_id=1,
+                user=user,
                 title=goal_text
             )
 
@@ -46,9 +53,14 @@ def home(request):
         return redirect("home")
 
 
+    # Get or create the demo user
+    user, created = User.objects.get_or_create(
+        username="lifepilot_demo"
+    )
+
     # Get active goals
     goals = Goal.objects.filter(
-        user_id=1,
+        user=user,
         status="active"
     ).order_by("-created_at")
 
